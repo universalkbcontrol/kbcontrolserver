@@ -1,6 +1,7 @@
 import socket
 import select
 from keyInput import keyOperation
+from lua import luaGenerator
 import msvcrt
 import time
 import os
@@ -64,7 +65,12 @@ class TcpServer():
             if not len(message_header):
                 return False
             message_length = int(message_header.decode('utf-8').strip())
-            return {'header': message_header, 'data': client_socket.recv(message_length)}
+            data = b''  # recv() does return bytes
+            while len(data) < message_length:
+                chunk = client_socket.recv(message_length)  # some 2^n number
+                data += chunk
+
+            return {'header': message_header, 'data': data}
 
         except:
             return False
@@ -80,6 +86,15 @@ class TcpServer():
             command = message
 
         keyOperation(command)
+
+    
+    def createLua(self, message):
+
+        keyLua = "luafile"
+
+        splitlua = message.split(keyLua)
+
+        luaGenerator(splitlua[0], splitlua[1])
 
     
     def tcpServer(self):
@@ -147,7 +162,10 @@ class TcpServer():
 
                         print(f'Received message from {user["data"].decode("utf-8")}: {message["data"].decode("utf-8")}')
                         receivedCommand = message["data"].decode("utf-8")
-                        self.keyCommand(receivedCommand)
+                        if "luafile" in receivedCommand:
+                            self.createLua(receivedCommand)
+                        else:
+                            self.keyCommand(receivedCommand)
 
 
                 # It's not really necessary to have this, but will handle some socket exceptions just in case
